@@ -322,8 +322,12 @@ export default function Chat() {
                 <div className={styles.sidebarSection}>
                     <div className={styles.sectionTitle}>Direct Messages</div>
                     {dms.map(ch => {
-                        // Very rough display name for DMs
-                        const display = ch.name.replace(`dm_`, '').replace(`_`, ' & ');
+                        // Extract target user ID from dm_smallID_largeID
+                        const ids = ch.name.replace('dm_', '').split('_');
+                        const targetId = ids.find(id => id !== String(user?.id));
+                        const targetUserObj = Array.from(onlineUsers).find(u => String(u.id) === targetId);
+                        const display = targetUserObj ? targetUserObj.username : ch.name.replace('dm_', '').replace('_', ' & ');
+
                         return (
                             <div
                                 key={ch.id}
@@ -331,7 +335,7 @@ export default function Chat() {
                                 className={`${styles.channelItem} ${activeChannel?.id === ch.id ? styles.active : ''}`}
                             >
                                 <FiMessageSquare className={styles.hash} />
-                                DM: {display}
+                                {display}
                             </div>
                         )
                     })}
