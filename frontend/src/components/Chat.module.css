@@ -158,6 +158,11 @@
 .messageInfo {
     display: flex;
     gap: 1rem;
+    width: 100%;
+}
+
+.messageSelf {
+    flex-direction: row-reverse;
 }
 
 .avatar {
@@ -177,12 +182,21 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    max-width: 70%;
+}
+
+.messageSelf .messageContent {
+    align-items: flex-end;
 }
 
 .messageHeader {
     display: flex;
     align-items: baseline;
     gap: 0.5rem;
+}
+
+.messageSelf .messageHeader {
+    flex-direction: row-reverse;
 }
 
 .messageAuthor {
@@ -199,8 +213,17 @@
     color: var(--text-primary);
     font-size: 0.95rem;
     line-height: 1.5;
-    background: transparent;
+    background: var(--bg-tertiary);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md) var(--radius-md) var(--radius-md) 0;
     word-break: break-word;
+    border: 1px solid var(--border-color);
+}
+
+.messageSelf .messageText {
+    background: var(--accent-primary);
+    border-color: var(--accent-hover);
+    border-radius: var(--radius-md) var(--radius-md) 0 var(--radius-md);
 }
 
 .chatInputArea {

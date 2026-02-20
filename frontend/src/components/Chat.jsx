@@ -212,7 +212,7 @@ export default function Chat() {
                             {messages.map((m, i) => {
                                 const showAvatar = i === 0 || messages[i - 1].user_id !== m.user_id;
                                 return (
-                                    <div key={m.id} className={styles.messageInfo} style={{ marginTop: showAvatar ? '0.5rem' : '-1rem' }}>
+                                    <div key={m.id} className={`${styles.messageInfo} ${m.user_id === user?.id ? styles.messageSelf : ''}`} style={{ marginTop: showAvatar ? '0.5rem' : '-1rem' }}>
                                         {showAvatar ? renderAvatar(m.username, m.color) : <div style={{ width: 36, flexShrink: 0 }}></div>}
                                         <div className={styles.messageContent}>
                                             {showAvatar && (
