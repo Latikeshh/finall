@@ -1,1 +1,1 @@
-export const API_URL = 'https://chatterbox-api-dev.loca.lt';
+export const API_URL = `http://${window.location.hostname}:3001`;
