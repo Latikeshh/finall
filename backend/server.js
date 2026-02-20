@@ -131,6 +131,14 @@ const isAdmin = (req, res, next) => {
     }
 };
 
+app.get('/api/admin/stats', authenticateToken, isAdmin, async (req, res) => {
+    const db = getDB();
+    const usersCount = await db.get('SELECT COUNT(*) as c FROM users');
+    const msgsCount = await db.get('SELECT COUNT(*) as c FROM messages');
+    const chCount = await db.get('SELECT COUNT(*) as c FROM channels');
+    res.json({ users: usersCount.c, messages: msgsCount.c, channels: chCount.c });
+});
+
 app.get('/api/admin/users', authenticateToken, isAdmin, async (req, res) => {
     const db = getDB();
     const users = await db.all('SELECT id, username, color, status FROM users');
@@ -187,14 +195,17 @@ io.on('connection', (socket) => {
     // Notify others
     socket.on('join_channel', async (channelId) => {
         socket.join(`channel_${channelId}`);
-        // Fetch history
+        // Fetch history with replies
         const messages = await db.all(`
-            SELECT m.*, u.username, u.color 
+            SELECT m.*, u.username, u.color,
+                   r.content AS reply_content, ru.username AS reply_username
             FROM messages m 
             JOIN users u ON m.user_id = u.id 
+            LEFT JOIN messages r ON m.reply_to = r.id
+            LEFT JOIN users ru ON r.user_id = ru.id
             WHERE m.channel_id = ? 
             ORDER BY m.created_at ASC 
-            LIMIT 50
+            LIMIT 100
         `, [channelId]);
 
         socket.emit('channel_history', { channelId, messages });
@@ -204,22 +215,37 @@ io.on('connection', (socket) => {
         socket.leave(`channel_${channelId}`);
     });
 
-    socket.on('send_message', async ({ channelId, content }) => {
+    socket.on('send_message', async ({ channelId, content, replyTo }) => {
         if (!content || !content.trim()) return;
 
         const result = await db.run(
-            'INSERT INTO messages (channel_id, user_id, content) VALUES (?, ?, ?)',
-            [channelId, user.id, content]
+            'INSERT INTO messages (channel_id, user_id, content, reply_to) VALUES (?, ?, ?, ?)',
+            [channelId, user.id, content, replyTo || null]
         );
 
         const newMsg = await db.get(`
-            SELECT m.*, u.username, u.color 
+            SELECT m.*, u.username, u.color,
+                   r.content AS reply_content, ru.username AS reply_username
             FROM messages m 
             JOIN users u ON m.user_id = u.id 
+            LEFT JOIN messages r ON m.reply_to = r.id
+            LEFT JOIN users ru ON r.user_id = ru.id
             WHERE m.id = ?
         `, [result.lastID]);
 
         io.to(`channel_${channelId}`).emit('new_message', newMsg);
+    });
+
+    socket.on('edit_message', async ({ messageId, channelId, content }) => {
+        if (!content || !content.trim()) return;
+        await db.run('UPDATE messages SET content = ?, is_edited = 1 WHERE id = ? AND user_id = ?', [content, messageId, user.id]);
+        io.to(`channel_${channelId}`).emit('message_edited', { messageId, content });
+    });
+
+    socket.on('delete_message', async ({ messageId, channelId }) => {
+        // Soft delete text
+        await db.run('UPDATE messages SET content = ?, is_deleted = 1 WHERE id = ?', ["🚫 This message was deleted", messageId]);
+        io.to(`channel_${channelId}`).emit('message_deleted', { messageId, content: "🚫 This message was deleted" });
     });
 
     socket.on('typing', ({ channelId, isTyping }) => {

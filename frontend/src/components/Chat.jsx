@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import styles from './Chat.module.css';
 import { format } from 'date-fns';
-import { FiSend, FiHash, FiLogOut, FiSettings, FiPlus, FiLock, FiUnlock, FiMessageSquare } from 'react-icons/fi';
+import { FiSend, FiHash, FiLogOut, FiSettings, FiPlus, FiLock, FiUnlock, FiMessageSquare, FiEdit2, FiTrash2, FiCornerUpLeft, FiX, FiCheck } from 'react-icons/fi';
 import { API_URL } from '../config';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -22,6 +22,8 @@ export default function Chat() {
     const [decryptedIds, setDecryptedIds] = useState(new Set());
     const [showCreate, setShowCreate] = useState(false);
     const [newChName, setNewChName] = useState('');
+    const [replyTo, setReplyTo] = useState(null);
+    const [editMsg, setEditMsg] = useState(null);
 
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
@@ -104,11 +106,21 @@ export default function Chat() {
             }
         });
 
+        socket.on('message_edited', ({ messageId, content }) => {
+            setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content, is_edited: 1 } : m));
+        });
+
+        socket.on('message_deleted', ({ messageId, content }) => {
+            setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content, is_deleted: 1 } : m));
+        });
+
         return () => {
             socket.emit('leave_channel', activeChannel.id);
             socket.off('channel_history');
             socket.off('new_message');
             socket.off('user_typing');
+            socket.off('message_edited');
+            socket.off('message_deleted');
             setTypingUsers(new Set());
         };
     }, [socket, activeChannel]);
@@ -165,10 +177,18 @@ export default function Chat() {
             setMessages([]);
             setInputStr('');
             return;
-        } else if (content.startsWith('/shrug')) {
-            socket.emit('send_message', { channelId: activeChannel.id, content: content.replace('/shrug', '') + ' ¯\\_(ツ)_/¯' });
+        }
+
+        if (editMsg) {
+            socket.emit('edit_message', { messageId: editMsg.id, channelId: activeChannel.id, content });
+            setEditMsg(null);
         } else {
-            socket.emit('send_message', { channelId: activeChannel.id, content });
+            let finalContent = content;
+            if (content.startsWith('/shrug')) {
+                finalContent = content.replace('/shrug', '') + ' ¯\\_(ツ)_/¯';
+            }
+            socket.emit('send_message', { channelId: activeChannel.id, content: finalContent, replyTo: replyTo ? replyTo.id : null });
+            setReplyTo(null);
         }
 
         setInputStr('');
@@ -333,16 +353,39 @@ export default function Chat() {
 
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: isSelf ? 'row-reverse' : 'row' }}>
                                                 <div className={`${styles.messageText} react-markdown ${!isDecrypted ? styles.encryptedBlob : ''}`}>
+                                                    {m.reply_to && isDecrypted && (
+                                                        <div className={styles.replyQuote}>
+                                                            <div className={styles.replyUser}>{m.reply_username}</div>
+                                                            <div className={styles.replyText}>{m.reply_content?.substring(0, 40)}{m.reply_content?.length > 40 ? '...' : ''}</div>
+                                                        </div>
+                                                    )}
                                                     {isDecrypted ? (
                                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                                                     ) : (
                                                         <span style={{ fontFamily: 'monospace', opacity: 0.8 }}>{encryptVisualText(m.content)}</span>
                                                     )}
+                                                    {m.is_edited === 1 && <div style={{ fontSize: '0.7rem', opacity: 0.6, marginTop: '2px', textAlign: isSelf ? 'right' : 'left' }}>(edited)</div>}
                                                 </div>
 
-                                                <button onClick={() => toggleDecryption(m.id)} className={styles.cryptoBtn} title={isDecrypted ? "Lock Message" : "Decrypt Message"}>
-                                                    {isDecrypted ? <FiUnlock className={styles.unlockIcon} /> : <FiLock className={styles.lockIcon} />}
-                                                </button>
+                                                <div className={styles.msgActions}>
+                                                    <button onClick={() => toggleDecryption(m.id)} className={styles.actionBtn} title={isDecrypted ? "Lock Message" : "Decrypt Message"}>
+                                                        {isDecrypted ? <FiUnlock className={styles.unlockIcon} /> : <FiLock className={styles.lockIcon} />}
+                                                    </button>
+                                                    {isDecrypted && (
+                                                        <>
+                                                            <button onClick={() => setReplyTo(m)} className={styles.actionBtn} title="Reply"><FiCornerUpLeft /></button>
+                                                            {isSelf && m.is_deleted === 0 && (
+                                                                <>
+                                                                    <button onClick={() => { setEditMsg(m); setInputStr(m.content); setReplyTo(null); }} className={styles.actionBtn} title="Edit"><FiEdit2 /></button>
+                                                                    <button onClick={() => socket.emit('delete_message', { messageId: m.id, channelId: activeChannel.id })} className={styles.actionBtn} title="Delete"><FiTrash2 /></button>
+                                                                </>
+                                                            )}
+                                                            {isAdmin && !isSelf && m.is_deleted === 0 && (
+                                                                <button onClick={() => socket.emit('delete_message', { messageId: m.id, channelId: activeChannel.id })} className={styles.actionBtn} title="Admin Delete"><FiTrash2 /></button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -352,7 +395,23 @@ export default function Chat() {
                         </div>
 
                         <div className={styles.chatInputArea}>
-                            <form className={styles.inputWrapper} onSubmit={handleSend}>
+                            {(replyTo || editMsg) && (
+                                <div className={styles.activeActionBanner}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            {replyTo ? <FiCornerUpLeft /> : <FiEdit2 />}
+                                            {replyTo ? `Replying to ${replyTo.username}` : `Editing Message`}
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {replyTo ? replyTo.content : editMsg.content}
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={() => { setReplyTo(null); setEditMsg(null); setInputStr(''); }} className={styles.closeActionBtn}>
+                                        <FiX />
+                                    </button>
+                                </div>
+                            )}
+                            <form className={`${styles.inputWrapper} ${(replyTo || editMsg) ? styles.inputWrapperActive : ''}`} onSubmit={handleSend}>
                                 {typingUsers.size > 0 && (
                                     <div className={styles.typingIndicator}>
                                         {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing

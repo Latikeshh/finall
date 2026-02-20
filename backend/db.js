@@ -39,11 +39,18 @@ async function initDB() {
             channel_id INTEGER,
             user_id INTEGER,
             content TEXT,
+            reply_to INTEGER DEFAULT NULL,
+            is_edited BOOLEAN DEFAULT 0,
+            is_deleted BOOLEAN DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (channel_id) REFERENCES channels (id),
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
     `);
+
+    try { await db.run('ALTER TABLE messages ADD COLUMN reply_to INTEGER'); } catch (e) { }
+    try { await db.run('ALTER TABLE messages ADD COLUMN is_edited BOOLEAN DEFAULT 0'); } catch (e) { }
+    try { await db.run('ALTER TABLE messages ADD COLUMN is_deleted BOOLEAN DEFAULT 0'); } catch (e) { }
 
     // Ensure there's a default general channel
     const general = await db.get('SELECT * FROM channels WHERE name = ?', ['general']);

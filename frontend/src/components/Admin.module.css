@@ -3,6 +3,8 @@
     min-height: 100vh;
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 .header {
@@ -23,10 +25,59 @@
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+    cursor: pointer;
 }
 
 .backBtn:hover {
     background: var(--bg-secondary);
+    border-color: var(--accent-primary);
+}
+
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.statCard {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.statIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.statValue {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.statLabel {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
 }
 
 .section {
@@ -35,29 +86,79 @@
     padding: 1.5rem;
     margin-bottom: 2rem;
     border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .sectionTitle {
     font-size: 1.2rem;
     font-weight: 600;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed var(--border-color);
+    color: var(--text-primary);
 }
 
-.list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+.tableWrapper {
+    overflow-x: auto;
 }
 
-.item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
+.adminTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.adminTable th {
+    text-align: left;
+    padding: 1rem;
     background: var(--bg-tertiary);
-    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.adminTable th:first-child {
+    border-top-left-radius: var(--radius-md);
+    border-bottom-left-radius: var(--radius-md);
+}
+
+.adminTable th:last-child {
+    border-top-right-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+}
+
+.adminTable td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.adminTable strong {
+    color: var(--text-primary);
+}
+
+.adminTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.adminTable tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.statusBadge,
+.typeBadge {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.typeBadge {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
 }
 
 .deleteBtn {
@@ -67,6 +168,12 @@
     border-radius: var(--radius-md);
     font-size: 0.85rem;
     font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .deleteBtn:hover {
