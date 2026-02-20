@@ -3,6 +3,10 @@ import { useSocket } from '../contexts/SocketContext';
 import styles from './Chat.module.css';
 import { format } from 'date-fns';
 import { FiSend, FiHash, FiLogOut } from 'react-icons/fi';
+import { API_URL } from '../config';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import toast from 'react-hot-toast';
 
 export default function Chat() {
     const { socket, user, logout } = useSocket();
@@ -20,7 +24,7 @@ export default function Chat() {
         if (!socket) return;
 
         // Fetch channels
-        fetch('http://localhost:3001/api/channels', {
+        fetch(`${API_URL}/api/channels`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         })
             .then(res => res.json())
@@ -39,7 +43,15 @@ export default function Chat() {
         });
 
         socket.on('user_status_change', ({ userId, status }) => {
-            setOnlineUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+            setOnlineUsers(prev => {
+                const updated = prev.map(u => u.id === userId ? { ...u, status } : u);
+                const userObj = prev.find(u => u.id === userId);
+                if (userObj && userObj.id !== user?.id) {
+                    if (status === 'online') toast.success(`${userObj.username} joined!`);
+                    else toast(`${userObj.username} left`, { icon: '👋' });
+                }
+                return updated;
+            });
         });
 
         return () => {
@@ -96,12 +108,19 @@ export default function Chat() {
 
     const handleSend = (e) => {
         e?.preventDefault();
-        if (!inputStr.trim() || !activeChannel) return;
+        const content = inputStr.trim();
+        if (!content || !activeChannel) return;
 
-        socket.emit('send_message', {
-            channelId: activeChannel.id,
-            content: inputStr,
-        });
+        // Big company feature: Slash commands intercept
+        if (content.startsWith('/clear')) {
+            setMessages([]);
+            setInputStr('');
+            return;
+        } else if (content.startsWith('/shrug')) {
+            socket.emit('send_message', { channelId: activeChannel.id, content: content.replace('/shrug', '') + ' ¯\\_(ツ)_/¯' });
+        } else {
+            socket.emit('send_message', { channelId: activeChannel.id, content });
+        }
 
         setInputStr('');
         socket.emit('typing', { channelId: activeChannel.id, isTyping: false });
@@ -202,7 +221,9 @@ export default function Chat() {
                                                     <span className={styles.messageTime}>{format(new Date(m.created_at), 'HH:mm')}</span>
                                                 </div>
                                             )}
-                                            <div className={styles.messageText}>{m.content}</div>
+                                            <div className={`${styles.messageText} react-markdown`}>
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                                            </div>
                                         </div>
                                     </div>
                                 );

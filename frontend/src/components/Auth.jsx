@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import styles from './Auth.module.css';
+import { API_URL } from '../config';
 
 export default function Auth() {
     const [isLogin, setIsLogin] = useState(true);
@@ -18,7 +19,7 @@ export default function Auth() {
         const endpoint = isLogin ? '/api/login' : '/api/register';
 
         try {
-            const res = await fetch(`http://localhost:3001${endpoint}`, {
+            const res = await fetch(`${API_URL}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),
@@ -31,7 +32,7 @@ export default function Auth() {
                 login(data.user, data.token);
             } else {
                 // Auto login after register
-                const loginRes = await fetch('http://localhost:3001/api/login', {
+                const loginRes = await fetch(`${API_URL}/api/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password }),

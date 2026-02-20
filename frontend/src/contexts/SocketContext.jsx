@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config';
 
 const SocketContext = createContext();
 
@@ -26,7 +27,7 @@ export const SocketProvider = ({ children }) => {
     }, []);
 
     const connectSocket = (token) => {
-        const newSocket = io('http://localhost:3001', {
+        const newSocket = io(API_URL, {
             auth: { token }
         });
 
