@@ -2,12 +2,13 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import styles from './Chat.module.css';
 import { format } from 'date-fns';
-import { FiSend, FiHash, FiLogOut, FiSettings, FiPlus, FiLock, FiUnlock, FiMessageSquare, FiEdit2, FiTrash2, FiCornerUpLeft, FiX, FiCheck, FiPaperclip } from 'react-icons/fi';
+import { FiSend, FiHash, FiLogOut, FiSettings, FiPlus, FiLock, FiUnlock, FiMessageSquare, FiEdit2, FiTrash2, FiCornerUpLeft, FiX, FiCheck, FiPaperclip, FiSmile } from 'react-icons/fi';
 import { API_URL } from '../config';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import EmojiPicker from 'emoji-picker-react';
 
 export default function Chat() {
     const { socket, user, logout } = useSocket();
@@ -26,6 +27,7 @@ export default function Chat() {
     const [replyTo, setReplyTo] = useState(null);
     const [editMsg, setEditMsg] = useState(null);
     const [profileCard, setProfileCard] = useState(null);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const fileInputRef = useRef(null);
 
     const messagesEndRef = useRef(null);
@@ -485,6 +487,22 @@ export default function Chat() {
                                     style={{ display: 'none' }}
                                     onChange={handleFileChange}
                                 />
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={styles.attachBtn} title="Add Emoji">
+                                        <FiSmile />
+                                    </button>
+                                    {showEmojiPicker && (
+                                        <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '10px', zIndex: 50 }}>
+                                            <EmojiPicker
+                                                onEmojiClick={(e) => {
+                                                    setInputStr(prev => prev + e.emoji);
+                                                    setShowEmojiPicker(false);
+                                                }}
+                                                theme="dark"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className={styles.attachBtn} title="Attach File">
                                     <FiPaperclip />
                                 </button>
