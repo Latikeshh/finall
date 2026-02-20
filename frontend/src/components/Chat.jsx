@@ -137,18 +137,24 @@ export default function Chat() {
     const handleCreateChannel = async (e) => {
         e.preventDefault();
         if (!newChName.trim()) return;
+
         const res = await fetch(`${API_URL}/api/channels`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify({ name: newChName.trim().toLowerCase().replace(/\s+/g, '-') })
+            body: JSON.stringify({
+                name: newChName.trim().toLowerCase().replace(/\s+/g, '-'),
+                members: Array.from(selectedGroupUsers)
+            })
         });
+
         if (res.ok) {
             const ch = await res.json();
             setActiveChannel(ch);
             setNewChName('');
+            setSelectedGroupUsers(new Set());
             setShowCreate(false);
             fetchChannels();
             toast.success(`Group #${ch.name} created!`);
@@ -280,8 +286,8 @@ export default function Chat() {
     };
 
     // Filter channels
-    const publicChannels = channels.filter(c => !c.is_direct);
-    const dms = channels.filter(c => c.is_direct);
+    const publicChannels = channels.filter(c => c.is_direct === 0 || c.is_direct === 2);
+    const dms = channels.filter(c => c.is_direct === 1);
     const isAdmin = user?.username?.toLowerCase().includes('admin');
 
     return (

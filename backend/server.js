@@ -82,19 +82,33 @@ app.get('/api/channels', authenticateToken, async (req, res) => {
     const db = getDB();
     const channels = await db.all('SELECT * FROM channels WHERE is_direct = 0');
     const dms = await db.all('SELECT * FROM channels WHERE is_direct = 1 AND (name LIKE ? OR name LIKE ?)', [`dm_${req.user.id}_%`, `dm_%_${req.user.id}`]);
-    res.json([...channels, ...dms]);
+    const privateGroups = await db.all('SELECT c.* FROM channels c JOIN channel_members cm ON c.id = cm.channel_id WHERE c.is_direct = 2 AND cm.user_id = ?', [req.user.id]);
+    res.json([...channels, ...dms, ...privateGroups]);
 });
 
 app.post('/api/channels', authenticateToken, async (req, res) => {
-    const { name } = req.body;
+    const { name, members } = req.body;
     if (!name) return res.status(400).json({ error: 'Channel name required' });
     const db = getDB();
+    const isPrivate = members && members.length > 0 ? 2 : 0;
     try {
-        const result = await db.run('INSERT INTO channels (name, is_direct) VALUES (?, ?)', [name, 0]);
-        const newChannel = { id: result.lastID, name, is_direct: 0 };
-        io.emit('channel_created', newChannel); // Optional: broadcast creation
+        const result = await db.run('INSERT INTO channels (name, is_direct) VALUES (?, ?)', [name, isPrivate]);
+        const newChannel = { id: result.lastID, name, is_direct: isPrivate };
+
+        if (isPrivate) {
+            await db.run('INSERT INTO channel_members (channel_id, user_id) VALUES (?, ?)', [newChannel.id, req.user.id]);
+            for (let uid of members) {
+                await db.run('INSERT INTO channel_members (channel_id, user_id) VALUES (?, ?)', [newChannel.id, uid]);
+            }
+            // Emit only to members could be done, but for hackathon just general emit
+            io.emit('channel_created', newChannel);
+        } else {
+            io.emit('channel_created', newChannel);
+        }
+
         res.json(newChannel);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: 'Database error' });
     }
 });
