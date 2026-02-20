@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import styles from './Auth.module.css';
+import { FiShield } from 'react-icons/fi';
 import { API_URL } from '../config';
 
 export default function Auth() {
-    const [isLogin, setIsLogin] = useState(true);
+    const [authMode, setAuthMode] = useState('login'); // 'login', 'register', 'admin'
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
@@ -16,7 +17,13 @@ export default function Auth() {
         setError(null);
         setLoading(true);
 
-        const endpoint = isLogin ? '/api/login' : '/api/register';
+        if (authMode === 'admin' && !username.toLowerCase().includes('admin')) {
+            setError("Admin usernames must contain the word 'admin'. If you don't have an admin account, register one first!");
+            setLoading(false);
+            return;
+        }
+
+        const endpoint = authMode === 'register' ? '/api/register' : '/api/login';
 
         try {
             const res = await fetch(`${API_URL}${endpoint}`, {
@@ -28,7 +35,7 @@ export default function Auth() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Something went wrong');
 
-            if (isLogin) {
+            if (authMode !== 'register') {
                 login(data.user, data.token);
             } else {
                 // Auto login after register
@@ -51,22 +58,32 @@ export default function Auth() {
         <div className={styles.container}>
             <div className={`glass-panel ${styles.authCard}`}>
                 <div className={styles.header}>
-                    <h1 className={styles.title}>ChatterBox Workspace</h1>
-                    <p className={styles.subtitle}>Connect and collaborate in real-time</p>
+                    <h1 className={styles.title}>
+                        {authMode === 'admin' ? <><FiShield style={{ marginRight: '8px', color: '#ef4444' }} /> Admin Portal</> : 'ChatterBox Workspace'}
+                    </h1>
+                    <p className={styles.subtitle}>
+                        {authMode === 'admin' ? 'Authorized personnel login' : 'Connect and collaborate in real-time'}
+                    </p>
                 </div>
 
                 <div className={styles.tabs}>
                     <button
-                        className={`${styles.tab} ${isLogin ? styles.active : ''}`}
-                        onClick={() => { setIsLogin(true); setError(null); }}
+                        className={`${styles.tab} ${authMode === 'login' ? styles.active : ''}`}
+                        onClick={() => { setAuthMode('login'); setError(null); }}
                     >
                         Login
                     </button>
                     <button
-                        className={`${styles.tab} ${!isLogin ? styles.active : ''}`}
-                        onClick={() => { setIsLogin(false); setError(null); }}
+                        className={`${styles.tab} ${authMode === 'register' ? styles.active : ''}`}
+                        onClick={() => { setAuthMode('register'); setError(null); }}
                     >
                         Sign Up
+                    </button>
+                    <button
+                        className={`${styles.tab} ${authMode === 'admin' ? styles.activeAdmin : ''}`}
+                        onClick={() => { setAuthMode('admin'); setError(null); }}
+                    >
+                        Admin
                     </button>
                 </div>
 
@@ -74,14 +91,14 @@ export default function Auth() {
 
                 <form className={styles.form} onSubmit={handleSubmit}>
                     <div className={styles.inputGroup}>
-                        <label className={styles.label}>Username</label>
+                        <label className={styles.label}>{authMode === 'admin' ? 'Admin Username' : 'Username'}</label>
                         <input
                             type="text"
                             required
                             className={styles.input}
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Enter your username"
+                            placeholder={authMode === 'admin' ? "e.g. superadmin" : "Enter your username"}
                         />
                     </div>
                     <div className={styles.inputGroup}>
@@ -95,8 +112,12 @@ export default function Auth() {
                             placeholder="••••••••"
                         />
                     </div>
-                    <button type="submit" disabled={loading} className={styles.submitBtn}>
-                        {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Create Account'}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className={`${styles.submitBtn} ${authMode === 'admin' ? styles.adminSubmit : ''}`}
+                    >
+                        {loading ? 'Processing...' : (authMode === 'register' ? 'Create Account' : (authMode === 'admin' ? 'Secure Login' : 'Sign In'))}
                     </button>
                 </form>
             </div>

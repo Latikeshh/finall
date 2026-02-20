@@ -142,3 +142,19 @@
     border: 1px solid rgba(239, 68, 68, 0.2);
     margin-bottom: 1rem;
 }
+
+.tab.activeAdmin {
+    background: var(--bg-secondary);
+    color: #ef4444;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    border-bottom: 2px solid #ef4444;
+}
+
+.adminSubmit {
+    background: #dc2626;
+    box-shadow: 0 4px 14px 0 rgba(220, 38, 38, 0.39);
+}
+
+.adminSubmit:hover {
+    background: #b91c1c;
+}
