@@ -12,6 +12,18 @@ export default function Auth() {
     const [loading, setLoading] = useState(false);
     const { login } = useSocket();
 
+    const handleTabChange = (mode) => {
+        setAuthMode(mode);
+        setError(null);
+        if (mode === 'admin') {
+            setUsername('admin');
+            setPassword('amitraj12');
+        } else {
+            setUsername('');
+            setPassword('');
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
@@ -69,19 +81,19 @@ export default function Auth() {
                 <div className={styles.tabs}>
                     <button
                         className={`${styles.tab} ${authMode === 'login' ? styles.active : ''}`}
-                        onClick={() => { setAuthMode('login'); setError(null); }}
+                        onClick={() => handleTabChange('login')}
                     >
                         Login
                     </button>
                     <button
                         className={`${styles.tab} ${authMode === 'register' ? styles.active : ''}`}
-                        onClick={() => { setAuthMode('register'); setError(null); }}
+                        onClick={() => handleTabChange('register')}
                     >
                         Sign Up
                     </button>
                     <button
                         className={`${styles.tab} ${authMode === 'admin' ? styles.activeAdmin : ''}`}
-                        onClick={() => { setAuthMode('admin'); setError(null); }}
+                        onClick={() => handleTabChange('admin')}
                     >
                         Admin
                     </button>
