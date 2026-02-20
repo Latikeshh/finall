@@ -5,6 +5,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { initDB, getDB } = require('./db');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,6 +18,7 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_123';
 
@@ -177,6 +179,11 @@ io.on('connection', (socket) => {
         const users = await db.all('SELECT id, username, color, status FROM users');
         socket.emit('online_users_list', users);
     });
+});
+
+// Fallback for React Router
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 initDB().then(() => {
