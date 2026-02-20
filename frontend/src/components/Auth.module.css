@@ -113,7 +113,6 @@
 }
 
 .submitBtn {
-    background: var(--accent-primary);
     color: white;
     padding: 0.85rem;
     border-radius: var(--radius-md);
