@@ -81,7 +81,82 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/channels', authenticateToken, async (req, res) => {
     const db = getDB();
     const channels = await db.all('SELECT * FROM channels WHERE is_direct = 0');
+    const dms = await db.all('SELECT * FROM channels WHERE is_direct = 1 AND (name LIKE ? OR name LIKE ?)', [`dm_${req.user.id}_%`, `dm_%_${req.user.id}`]);
+    res.json([...channels, ...dms]);
+});
+
+app.post('/api/channels', authenticateToken, async (req, res) => {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Channel name required' });
+    const db = getDB();
+    try {
+        const result = await db.run('INSERT INTO channels (name, is_direct) VALUES (?, ?)', [name, 0]);
+        const newChannel = { id: result.lastID, name, is_direct: 0 };
+        io.emit('channel_created', newChannel); // Optional: broadcast creation
+        res.json(newChannel);
+    } catch (err) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+app.post('/api/dm', authenticateToken, async (req, res) => {
+    const { targetUserId } = req.body;
+    const db = getDB();
+    if (!targetUserId) return res.status(400).json({ error: 'Target user ID required' });
+
+    // Check if DM channel exists
+    // DM channel name logic: "dm_smallID_largeID"
+    const [u1, u2] = [req.user.id, targetUserId].sort((a, b) => a - b);
+    const dmName = `dm_${u1}_${u2}`;
+
+    try {
+        let channel = await db.get('SELECT * FROM channels WHERE name = ? AND is_direct = 1', [dmName]);
+        if (!channel) {
+            const result = await db.run('INSERT INTO channels (name, is_direct) VALUES (?, ?)', [dmName, 1]);
+            channel = { id: result.lastID, name: dmName, is_direct: 1 };
+        }
+        res.json(channel);
+    } catch (err) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Admin Routes
+const isAdmin = (req, res, next) => {
+    // For simplicity, user ID 1 is admin, or username 'admin'. We will check if username starts with admin
+    if (req.user && req.user.username.toLowerCase().includes('admin')) {
+        next();
+    } else {
+        res.status(403).json({ error: 'Admin access required' });
+    }
+};
+
+app.get('/api/admin/users', authenticateToken, isAdmin, async (req, res) => {
+    const db = getDB();
+    const users = await db.all('SELECT id, username, color, status FROM users');
+    res.json(users);
+});
+
+app.delete('/api/admin/users/:id', authenticateToken, isAdmin, async (req, res) => {
+    const db = getDB();
+    await db.run('DELETE FROM messages WHERE user_id = ?', [req.params.id]);
+    await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
+    io.emit('user_deleted', { userId: parseInt(req.params.id) });
+    res.json({ success: true });
+});
+
+app.get('/api/admin/channels', authenticateToken, isAdmin, async (req, res) => {
+    const db = getDB();
+    const channels = await db.all('SELECT * FROM channels');
     res.json(channels);
+});
+
+app.delete('/api/admin/channels/:id', authenticateToken, isAdmin, async (req, res) => {
+    const db = getDB();
+    await db.run('DELETE FROM messages WHERE channel_id = ?', [req.params.id]);
+    await db.run('DELETE FROM channels WHERE id = ?', [req.params.id]);
+    io.emit('channel_deleted', { channelId: parseInt(req.params.id) });
+    res.json({ success: true });
 });
 
 // Socket auth middleware

@@ -289,3 +289,55 @@
     align-items: center;
     gap: 0.25rem;
 }
+
+.createInput {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    width: 100%;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.createInput:focus {
+    border-color: var(--accent-primary);
+}
+
+.cryptoBtn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cryptoBtn:hover {
+    background: var(--bg-secondary);
+    transform: scale(1.1);
+}
+
+.lockIcon {
+    color: var(--danger);
+}
+
+.unlockIcon {
+    color: var(--success);
+}
+
+.encryptedBlob {
+    opacity: 0.8;
+    background: repeating-linear-gradient(45deg,
+            rgba(99, 102, 241, 0.1),
+            rgba(99, 102, 241, 0.1) 10px,
+            rgba(0, 0, 0, 0.1) 10px,
+            rgba(0, 0, 0, 0.1) 20px);
+    filter: blur(0.5px);
+    transition: all 0.5s ease;
+}
