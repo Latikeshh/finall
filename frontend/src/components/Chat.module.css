@@ -421,3 +421,132 @@
     border-radius: 0 0 var(--radius-md) var(--radius-md);
     border-top: 1px dashed var(--border-color);
 }
+
+.clickableAvatar {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.clickableAvatar:hover {
+    transform: scale(1.1);
+}
+
+.profileDmBtn {
+    width: 100%;
+    padding: 0.6rem;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.profileDmBtn:hover {
+    background: var(--accent-hover);
+}
+
+.attachBtn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-right: 0.5rem;
+    margin-bottom: 2px;
+    transition: color 0.2s;
+}
+
+.attachBtn:hover {
+    color: var(--accent-primary);
+}
+
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modalBox {
+    background: var(--bg-secondary);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.userSelectScroll {
+    max-height: 180px;
+    overflow-y: auto;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.5rem;
+}
+
+.userCheckItem {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.2s;
+    color: var(--text-secondary);
+}
+
+.userCheckItem:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.userCheckbox {
+    accent-color: var(--accent-primary);
+    width: 16px;
+    height: 16px;
+}
+
+.cancelBtn,
+.confirmBtn {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancelBtn {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.cancelBtn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.confirmBtn {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.confirmBtn:hover {
+    background: var(--accent-hover);
+}

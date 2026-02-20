@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import styles from './Chat.module.css';
 import { format } from 'date-fns';
-import { FiSend, FiHash, FiLogOut, FiSettings, FiPlus, FiLock, FiUnlock, FiMessageSquare, FiEdit2, FiTrash2, FiCornerUpLeft, FiX, FiCheck } from 'react-icons/fi';
+import { FiSend, FiHash, FiLogOut, FiSettings, FiPlus, FiLock, FiUnlock, FiMessageSquare, FiEdit2, FiTrash2, FiCornerUpLeft, FiX, FiCheck, FiPaperclip } from 'react-icons/fi';
 import { API_URL } from '../config';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -22,8 +22,11 @@ export default function Chat() {
     const [decryptedIds, setDecryptedIds] = useState(new Set());
     const [showCreate, setShowCreate] = useState(false);
     const [newChName, setNewChName] = useState('');
+    const [selectedGroupUsers, setSelectedGroupUsers] = useState(new Set());
     const [replyTo, setReplyTo] = useState(null);
     const [editMsg, setEditMsg] = useState(null);
+    const [profileCard, setProfileCard] = useState(null);
+    const fileInputRef = useRef(null);
 
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
@@ -219,10 +222,58 @@ export default function Chat() {
         catch { return '•••••••••••••••••'; }
     };
 
-    const renderAvatar = (name, color) => {
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 3 * 1024 * 1024) return toast.error("File size limits to 3MB");
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const base64 = ev.target.result;
+            const content = `[ATTACHMENT:${file.name}:${base64}]`;
+            socket.emit('send_message', { channelId: activeChannel.id, content, replyTo: replyTo ? replyTo.id : null });
+            setReplyTo(null);
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
+
+    const renderMessageContent = (msgContent) => {
+        if (msgContent.startsWith('[ATTACHMENT:')) {
+            const match = msgContent.match(/^\[ATTACHMENT:(.+?):(.+)\]$/);
+            if (match) {
+                const fileName = match[1];
+                const dataUrl = match[2];
+                const isImg = dataUrl.startsWith('data:image/');
+                if (isImg) {
+                    return <img src={dataUrl} alt={fileName} style={{ maxWidth: '300px', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--border-color)' }} onClick={() => window.open(dataUrl)} />;
+                } else {
+                    return <a href={dataUrl} download={fileName} style={{ color: 'var(--accent-primary)', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FiPaperclip /> Download {fileName}</a>;
+                }
+            }
+        }
+        return <ReactMarkdown remarkPlugins={[remarkGfm]}>{msgContent}</ReactMarkdown>;
+    };
+
+    const handleAvatarClick = (e, m) => {
+        e.stopPropagation();
+        const online = onlineUsers.find(u => u.username === m.username);
+        setProfileCard({
+            user: { id: m.user_id, username: m.username, color: m.color },
+            status: online ? online.status : 'offline',
+            x: e.clientX,
+            y: e.clientY
+        });
+    };
+
+    const renderAvatar = (name, color, msgObj = null) => {
         const initial = name ? name.charAt(0).toUpperCase() : '?';
         return (
-            <div className={styles.avatar} style={{ backgroundColor: color || '#3b82f6' }}>
+            <div
+                className={`${styles.avatar} ${msgObj ? styles.clickableAvatar : ''}`}
+                style={{ backgroundColor: color || '#3b82f6' }}
+                onClick={(e) => msgObj && handleAvatarClick(e, msgObj)}
+            >
                 {initial}
             </div>
         );
@@ -247,20 +298,8 @@ export default function Chat() {
                 <div className={styles.sidebarSection}>
                     <div className={styles.sectionTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>Groups</span>
-                        <FiPlus style={{ cursor: 'pointer' }} onClick={() => setShowCreate(!showCreate)} title="Create Group" />
+                        <FiPlus style={{ cursor: 'pointer' }} onClick={() => setShowCreate(true)} title="Create Group" />
                     </div>
-
-                    {showCreate && (
-                        <form onSubmit={handleCreateChannel} style={{ padding: '0 1.25rem', marginBottom: '0.5rem' }}>
-                            <input
-                                autoFocus
-                                value={newChName}
-                                onChange={e => setNewChName(e.target.value)}
-                                placeholder="Group name..."
-                                className={styles.createInput}
-                            />
-                        </form>
-                    )}
 
                     {publicChannels.map(ch => (
                         <div
@@ -342,11 +381,11 @@ export default function Chat() {
 
                                 return (
                                     <div key={m.id} className={`${styles.messageInfo} ${isSelf ? styles.messageSelf : ''}`} style={{ marginTop: showAvatar ? '0.5rem' : '-1rem' }}>
-                                        {showAvatar ? renderAvatar(m.username, m.color) : <div style={{ width: 36, flexShrink: 0 }}></div>}
+                                        {showAvatar ? renderAvatar(m.username, m.color, m) : <div style={{ width: 36, flexShrink: 0 }}></div>}
                                         <div className={styles.messageContent}>
                                             {showAvatar && (
                                                 <div className={styles.messageHeader}>
-                                                    <span className={styles.messageAuthor} style={{ color: m.color || 'var(--text-primary)' }}>{m.username}</span>
+                                                    <span className={styles.messageAuthor} onClick={(e) => handleAvatarClick(e, m)} style={{ color: m.color || 'var(--text-primary)', cursor: 'pointer' }}>{m.username}</span>
                                                     <span className={styles.messageTime}>{format(new Date(m.created_at), 'HH:mm')}</span>
                                                 </div>
                                             )}
@@ -360,7 +399,7 @@ export default function Chat() {
                                                         </div>
                                                     )}
                                                     {isDecrypted ? (
-                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                                                        renderMessageContent(m.content)
                                                     ) : (
                                                         <span style={{ fontFamily: 'monospace', opacity: 0.8 }}>{encryptVisualText(m.content)}</span>
                                                     )}
@@ -430,6 +469,15 @@ export default function Chat() {
                                     value={inputStr}
                                     onChange={handleTyping}
                                 />
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileChange}
+                                />
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className={styles.attachBtn} title="Attach File">
+                                    <FiPaperclip />
+                                </button>
                                 <button type="submit" className={styles.sendBtn} disabled={!inputStr.trim()}>
                                     <FiSend />
                                 </button>
@@ -438,6 +486,74 @@ export default function Chat() {
                     </>
                 )}
             </div>
+
+            {profileCard && (
+                <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setProfileCard(null)} />
+                    <div style={{
+                        position: 'fixed',
+                        left: Math.min(profileCard.x, window.innerWidth - 220),
+                        top: Math.min(profileCard.y, window.innerHeight - 250),
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '12px',
+                        padding: '1.5rem',
+                        zIndex: 50,
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        width: '200px'
+                    }}>
+                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: profileCard.user.color || '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 600 }}>
+                            {profileCard.user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>{profileCard.user.username}</div>
+                            <div style={{ color: profileCard.status === 'online' ? '#22c55e' : '#64748b', fontSize: '0.85rem', marginTop: '4px' }}>● {profileCard.status}</div>
+                        </div>
+                        {profileCard.user.id !== user?.id && (
+                            <button onClick={() => { handleStartDM(profileCard.user.id); setProfileCard(null); }} className={styles.profileDmBtn}>
+                                <FiMessageSquare /> Send Message
+                            </button>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {showCreate && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox}>
+                        <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Create New Group</h3>
+                        <input
+                            autoFocus
+                            value={newChName}
+                            onChange={e => setNewChName(e.target.value)}
+                            placeholder="Group name (e.g. hackathon)"
+                            className={styles.createInput}
+                        />
+                        <div style={{ marginTop: '1.5rem', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase' }}>Add Members</div>
+                        <div className={styles.userSelectScroll}>
+                            {onlineUsers.filter(u => u.id !== user?.id).map(u => (
+                                <label key={u.id} className={styles.userCheckItem}>
+                                    <input type="checkbox" checked={selectedGroupUsers.has(u.id)} onChange={(e) => {
+                                        const next = new Set(selectedGroupUsers);
+                                        if (e.target.checked) next.add(u.id); else next.delete(u.id);
+                                        setSelectedGroupUsers(next);
+                                    }} className={styles.userCheckbox} />
+                                    <span>{u.username}</span>
+                                </label>
+                            ))}
+                            {onlineUsers.length <= 1 && <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>No other users online.</div>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                            <button className={styles.cancelBtn} onClick={() => { setShowCreate(false); setSelectedGroupUsers(new Set()); setNewChName(''); }}>Cancel</button>
+                            <button className={styles.confirmBtn} onClick={handleCreateChannel}>Create Group</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
