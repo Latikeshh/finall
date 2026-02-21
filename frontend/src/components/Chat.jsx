@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import styles from './Chat.module.css';
 import { format } from 'date-fns';
-import { FiSend, FiHash, FiLogOut, FiSettings, FiPlus, FiLock, FiUnlock, FiMessageSquare, FiEdit2, FiTrash2, FiCornerUpLeft, FiX, FiCheck, FiPaperclip, FiSmile } from 'react-icons/fi';
+import { FiSend, FiHash, FiLogOut, FiSettings, FiPlus, FiLock, FiUnlock, FiMessageSquare, FiEdit2, FiTrash2, FiCornerUpLeft, FiX, FiCheck, FiPaperclip, FiSmile, FiDroplet } from 'react-icons/fi';
 import { API_URL } from '../config';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -29,11 +29,28 @@ export default function Chat() {
     const [profileCard, setProfileCard] = useState(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [blockedUsers, setBlockedUsers] = useState(new Set());
+    const [showThemeModal, setShowThemeModal] = useState(false);
+    const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('theme') || 'dark');
     const fileInputRef = useRef(null);
 
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const navigate = useNavigate();
+
+    const themes = [
+        { id: 'dark', name: 'Dark', bg: '#0f111a', accent: '#6366f1' },
+        { id: 'light', name: 'Light', bg: '#f8fafc', accent: '#3b82f6' },
+        { id: 'cyberpunk', name: 'Cyberpunk', bg: '#000000', accent: '#ff003c' },
+        { id: 'ocean', name: 'Ocean', bg: '#020617', accent: '#0ea5e9' },
+        { id: 'sunset', name: 'Sunset', bg: '#2e0219', accent: '#e11d48' }
+    ];
+
+    const changeTheme = (themeId) => {
+        setCurrentTheme(themeId);
+        localStorage.setItem('theme', themeId);
+        document.documentElement.setAttribute('data-theme', themeId);
+        setShowThemeModal(false);
+    };
 
     // Initial setup
     useEffect(() => {
@@ -380,6 +397,9 @@ export default function Chat() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className={styles.logoutBtn} onClick={() => setShowThemeModal(true)} title="Change Theme" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}>
+                            <FiDroplet />
+                        </button>
                         {isAdmin && (
                             <button className={styles.logoutBtn} onClick={() => navigate('/admin')} title="Admin Panel" style={{ background: 'var(--accent-hover)', color: 'white' }}>
                                 <FiSettings />
@@ -644,6 +664,44 @@ export default function Chat() {
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
                             <button className={styles.cancelBtn} onClick={() => { setShowCreate(false); setSelectedGroupUsers(new Set()); setNewChName(''); }}>Cancel</button>
                             <button className={styles.confirmBtn} onClick={handleCreateChannel}>Create Group</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showThemeModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowThemeModal(false)}>
+                    <div className={styles.modalBox} onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Choose a Theme</h3>
+                            <button onClick={() => setShowThemeModal(false)} style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}><FiX /></button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                            {themes.map(t => (
+                                <div
+                                    key={t.id}
+                                    onClick={() => changeTheme(t.id)}
+                                    style={{
+                                        margin: 0,
+                                        padding: '1rem',
+                                        borderRadius: '12px',
+                                        background: t.bg,
+                                        border: `2px solid ${currentTheme === t.id ? t.accent : 'rgba(255,255,255,0.1)'}`,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        transition: 'all 0.2s',
+                                        boxShadow: currentTheme === t.id ? `0 0 15px ${t.accent}40` : 'none',
+                                        transform: currentTheme === t.id ? 'scale(1.02)' : 'scale(1)',
+                                    }}
+                                >
+                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.id === 'light' ? '#fff' : '#000' }}>
+                                        <FiCheck style={{ opacity: currentTheme === t.id ? 1 : 0 }} />
+                                    </div>
+                                    <span style={{ fontWeight: 600, color: t.id === 'light' ? '#0f172a' : '#fff' }}>{t.name}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

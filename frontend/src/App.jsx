@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Auth from './components/Auth';
 import Chat from './components/Chat';
@@ -6,6 +6,11 @@ import Admin from './components/Admin';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }, []);
+
   return (
     <>
       <Toaster
