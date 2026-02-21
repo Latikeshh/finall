@@ -28,6 +28,7 @@ export default function Chat() {
     const [editMsg, setEditMsg] = useState(null);
     const [profileCard, setProfileCard] = useState(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [blockedUsers, setBlockedUsers] = useState(new Set());
     const fileInputRef = useRef(null);
 
     const messagesEndRef = useRef(null);
@@ -43,6 +44,7 @@ export default function Chat() {
         // Socket events
         socket.emit('get_online_users');
         socket.on('online_users_list', (users) => setOnlineUsers(users));
+        socket.on('blocked_users_list', (blockedIds) => setBlockedUsers(new Set(blockedIds)));
 
         socket.on('user_status_change', ({ userId, status }) => {
             setOnlineUsers(prev => {
@@ -346,12 +348,28 @@ export default function Chat() {
                 <div className={styles.sidebarSection} style={{ marginTop: '2rem', flex: 1 }}>
                     <div className={styles.sectionTitle}>Connected Users</div>
                     <div style={{ overflowY: 'auto' }}>
-                        {onlineUsers.filter(u => u.id !== user?.id).map(u => (
-                            <div key={u.id} className={styles.userItem} onClick={() => handleStartDM(u.id)} style={{ cursor: 'pointer' }} title="Click to Message">
-                                <div className={`${styles.statusIndicator} ${u.status === 'online' ? styles.online : styles.offline}`} />
-                                {u.username}
-                            </div>
-                        ))}
+                        {onlineUsers.filter(u => u.id !== user?.id).map(u => {
+                            const isBlocked = blockedUsers.has(u.id);
+                            return (
+                                <div
+                                    key={u.id}
+                                    className={styles.userItem}
+                                    onClick={(e) => {
+                                        setProfileCard({
+                                            user: u,
+                                            status: u.status,
+                                            x: e.clientX,
+                                            y: e.clientY
+                                        });
+                                    }}
+                                    style={{ cursor: 'pointer', opacity: isBlocked ? 0.5 : 1 }}
+                                    title={isBlocked ? "Blocked - Click to Unblock" : "View Profile"}
+                                >
+                                    <div className={`${styles.statusIndicator} ${u.status === 'online' ? styles.online : styles.offline}`} />
+                                    <span style={{ textDecoration: isBlocked ? 'line-through' : 'none' }}>{u.username}</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -386,10 +404,10 @@ export default function Chat() {
                         </div>
 
                         <div className={styles.chatMessages}>
-                            {messages.map((m, i) => {
-                                const showAvatar = i === 0 || messages[i - 1].user_id !== m.user_id; // Still used mapping visual logic
+                            {messages.filter(m => !blockedUsers.has(m.user_id)).map((m, i, arr) => {
+                                const showAvatar = i === 0 || arr[i - 1].user_id !== m.user_id; // Still used mapping visual logic
                                 const isSelf = m.user_id === user?.id;
-                                const isDecrypted = decryptedIds.has(m.id);
+                                const isDecrypted = decryptedIds.has(m.id) || m.content.startsWith('[attached_file:');
 
                                 return (
                                     <div key={m.id} className={`${styles.messageInfo} ${isSelf ? styles.messageSelf : ''}`} style={{ marginTop: showAvatar ? '0.5rem' : '-1rem' }}>
@@ -419,9 +437,11 @@ export default function Chat() {
                                                 </div>
 
                                                 <div className={styles.msgActions}>
-                                                    <button onClick={() => toggleDecryption(m.id)} className={styles.actionBtn} title={isDecrypted ? "Lock Message" : "Decrypt Message"}>
-                                                        {isDecrypted ? <FiUnlock className={styles.unlockIcon} /> : <FiLock className={styles.lockIcon} />}
-                                                    </button>
+                                                    {!m.content.startsWith('[attached_file:') && (
+                                                        <button onClick={() => toggleDecryption(m.id)} className={styles.actionBtn} title={isDecrypted ? "Lock Message" : "Decrypt Message"}>
+                                                            {isDecrypted ? <FiUnlock className={styles.unlockIcon} /> : <FiLock className={styles.lockIcon} />}
+                                                        </button>
+                                                    )}
                                                     {isDecrypted && (
                                                         <>
                                                             <button onClick={() => setReplyTo(m)} className={styles.actionBtn} title="Reply"><FiCornerUpLeft /></button>
@@ -542,9 +562,38 @@ export default function Chat() {
                             <div style={{ color: profileCard.status === 'online' ? '#22c55e' : '#64748b', fontSize: '0.85rem', marginTop: '4px' }}>● {profileCard.status}</div>
                         </div>
                         {profileCard.user.id !== user?.id && (
-                            <button onClick={() => { handleStartDM(profileCard.user.id); setProfileCard(null); }} className={styles.profileDmBtn}>
-                                <FiMessageSquare /> Send Message
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                                <button onClick={() => { handleStartDM(profileCard.user.id); setProfileCard(null); }} className={styles.profileDmBtn}>
+                                    <FiMessageSquare /> Send Message
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (blockedUsers.has(profileCard.user.id)) {
+                                            socket.emit('unblock_user', profileCard.user.id);
+                                        } else {
+                                            socket.emit('block_user', profileCard.user.id);
+                                        }
+                                        setProfileCard(null);
+                                    }}
+                                    style={{
+                                        background: blockedUsers.has(profileCard.user.id) ? 'var(--bg-tertiary)' : 'rgba(239, 68, 68, 0.1)',
+                                        color: blockedUsers.has(profileCard.user.id) ? 'var(--text-primary)' : '#ef4444',
+                                        border: '1px solid currentColor',
+                                        padding: '0.65rem 1rem',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        transition: 'all 0.2s',
+                                        width: '100%'
+                                    }}
+                                >
+                                    {blockedUsers.has(profileCard.user.id) ? <>Unblock User</> : <><FiX /> Block User</>}
+                                </button>
+                            </div>
                         )}
                     </div>
                 </>

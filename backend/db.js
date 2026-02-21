@@ -46,6 +46,14 @@ async function initDB() {
             FOREIGN KEY (channel_id) REFERENCES channels (id),
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
+
+        CREATE TABLE IF NOT EXISTS blocked_users (
+            blocker_id INTEGER,
+            blocked_id INTEGER,
+            PRIMARY KEY (blocker_id, blocked_id),
+            FOREIGN KEY (blocker_id) REFERENCES users (id),
+            FOREIGN KEY (blocked_id) REFERENCES users (id)
+        );
     `);
 
     try { await db.run('ALTER TABLE messages ADD COLUMN reply_to INTEGER'); } catch (e) { }

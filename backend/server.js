@@ -290,10 +290,30 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Request active users
+    // Block functionality
+    socket.on('block_user', async (blockedId) => {
+        try {
+            await db.run('INSERT INTO blocked_users (blocker_id, blocked_id) VALUES (?, ?)', [user.id, blockedId]);
+            const blockedList = await db.all('SELECT blocked_id FROM blocked_users WHERE blocker_id = ?', [user.id]);
+            socket.emit('blocked_users_list', blockedList.map(b => b.blocked_id));
+        } catch (e) {
+            // Might already be blocked
+        }
+    });
+
+    socket.on('unblock_user', async (blockedId) => {
+        await db.run('DELETE FROM blocked_users WHERE blocker_id = ? AND blocked_id = ?', [user.id, blockedId]);
+        const blockedList = await db.all('SELECT blocked_id FROM blocked_users WHERE blocker_id = ?', [user.id]);
+        socket.emit('blocked_users_list', blockedList.map(b => b.blocked_id));
+    });
+
+    // Request active users (and self blocklist)
     socket.on('get_online_users', async () => {
         const users = await db.all('SELECT id, username, color, avatar, status FROM users');
         socket.emit('online_users_list', users);
+
+        const blockedList = await db.all('SELECT blocked_id FROM blocked_users WHERE blocker_id = ?', [user.id]);
+        socket.emit('blocked_users_list', blockedList.map(b => b.blocked_id));
     });
 });
 
