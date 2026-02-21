@@ -158,3 +158,30 @@
 .adminSubmit:hover {
     background: #b91c1c;
 }
+
+.avatarRow {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 0.5rem;
+}
+
+.avatarChoice {
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+    background: var(--bg-tertiary);
+    border: 2px solid transparent;
+}
+
+.avatarChoice:hover {
+    transform: scale(1.1);
+    background: var(--bg-secondary);
+}
+
+.avatarChoice.avatarActive {
+    border-color: var(--accent-primary);
+    background: var(--bg-secondary);
+    box-shadow: 0 0 10px var(--accent-glow);
+}

@@ -39,17 +39,18 @@ const authenticateToken = (req, res, next) => {
 
 // -- HTTP ROUTES --
 app.post('/api/register', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, avatar } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
     try {
         const db = getDB();
         const hashedPassword = await bcrypt.hash(password, 10);
         const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        const userAvatar = avatar || '1';
 
         const result = await db.run(
-            'INSERT INTO users (username, password, color) VALUES (?, ?, ?)',
-            [username, hashedPassword, color]
+            'INSERT INTO users (username, password, color, avatar) VALUES (?, ?, ?, ?)',
+            [username, hashedPassword, color, userAvatar]
         );
         res.json({ success: true, userId: result.lastID });
     } catch (err) {
@@ -71,8 +72,8 @@ app.post('/api/login', async (req, res) => {
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return res.status(400).json({ error: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: user.id, username: user.username, color: user.color }, JWT_SECRET, { expiresIn: '24h' });
-        res.json({ token, user: { id: user.id, username: user.username, color: user.color } });
+        const token = jwt.sign({ id: user.id, username: user.username, color: user.color, avatar: user.avatar }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ token, user: { id: user.id, username: user.username, color: user.color, avatar: user.avatar } });
     } catch (err) {
         res.status(500).json({ error: 'Database error' });
     }
@@ -211,7 +212,7 @@ io.on('connection', (socket) => {
         socket.join(`channel_${channelId}`);
         // Fetch history with replies
         const messages = await db.all(`
-            SELECT m.*, u.username, u.color,
+            SELECT m.*, u.username, u.color, u.avatar,
                    r.content AS reply_content, ru.username AS reply_username
             FROM messages m 
             JOIN users u ON m.user_id = u.id 
@@ -238,7 +239,7 @@ io.on('connection', (socket) => {
         );
 
         const newMsg = await db.get(`
-            SELECT m.*, u.username, u.color,
+            SELECT m.*, u.username, u.color, u.avatar,
                    r.content AS reply_content, ru.username AS reply_username
             FROM messages m 
             JOIN users u ON m.user_id = u.id 
@@ -291,7 +292,7 @@ io.on('connection', (socket) => {
 
     // Request active users
     socket.on('get_online_users', async () => {
-        const users = await db.all('SELECT id, username, color, status FROM users');
+        const users = await db.all('SELECT id, username, color, avatar, status FROM users');
         socket.emit('online_users_list', users);
     });
 });

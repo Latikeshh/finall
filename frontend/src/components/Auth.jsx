@@ -8,6 +8,7 @@ export default function Auth() {
     const [authMode, setAuthMode] = useState('login'); // 'login', 'register', 'admin'
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [avatar, setAvatar] = useState('👨‍💻');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const { login } = useSocket();
@@ -41,7 +42,7 @@ export default function Auth() {
             const res = await fetch(`${API_URL}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify(authMode === 'register' ? { username, password, avatar } : { username, password }),
             });
 
             const data = await res.json();
@@ -124,6 +125,22 @@ export default function Auth() {
                             placeholder="••••••••"
                         />
                     </div>
+                    {authMode === 'register' && (
+                        <div className={styles.inputGroup}>
+                            <label className={styles.label}>Choose Avatar</label>
+                            <div className={styles.avatarRow}>
+                                {['👨‍💻', '👩‍💻', '🤖'].map((a) => (
+                                    <div
+                                        key={a}
+                                        className={`${styles.avatarChoice} ${avatar === a ? styles.avatarActive : ''}`}
+                                        onClick={() => setAvatar(a)}
+                                    >
+                                        {a}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     <button
                         type="submit"
                         disabled={loading}

@@ -267,22 +267,22 @@ export default function Chat() {
         e.stopPropagation();
         const online = onlineUsers.find(u => u.username === m.username);
         setProfileCard({
-            user: { id: m.user_id, username: m.username, color: m.color },
+            user: { id: m.user_id, username: m.username, color: m.color, avatar: m.avatar },
             status: online ? online.status : 'offline',
             x: e.clientX,
             y: e.clientY
         });
     };
 
-    const renderAvatar = (name, color, msgObj = null) => {
-        const initial = name ? name.charAt(0).toUpperCase() : '?';
+    const renderAvatar = (name, color, avatarStr, msgObj = null) => {
+        const display = avatarStr && String(avatarStr).length > 0 && String(avatarStr) !== "1" ? avatarStr : (name ? name.charAt(0).toUpperCase() : '?');
         return (
             <div
                 className={`${styles.avatar} ${msgObj ? styles.clickableAvatar : ''}`}
-                style={{ backgroundColor: color || '#3b82f6' }}
+                style={{ backgroundColor: color || '#3b82f6', fontSize: display.match(/\p{Emoji}/u) ? '1.2rem' : '1rem' }}
                 onClick={(e) => msgObj && handleAvatarClick(e, msgObj)}
             >
-                {initial}
+                {display}
             </div>
         );
     };
@@ -357,7 +357,7 @@ export default function Chat() {
 
                 <div className={styles.sidebarHeader} style={{ borderTop: '1px solid var(--border-color)', borderBottom: 'none', paddingTop: '1rem', marginTop: 'auto' }}>
                     <div className={styles.userItem} style={{ padding: 0 }}>
-                        {renderAvatar(user?.username, user?.color)}
+                        {renderAvatar(user?.username, user?.color, user?.avatar)}
                         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user?.username}</span>
                     </div>
 
@@ -393,7 +393,7 @@ export default function Chat() {
 
                                 return (
                                     <div key={m.id} className={`${styles.messageInfo} ${isSelf ? styles.messageSelf : ''}`} style={{ marginTop: showAvatar ? '0.5rem' : '-1rem' }}>
-                                        {showAvatar ? renderAvatar(m.username, m.color, m) : <div style={{ width: 36, flexShrink: 0 }}></div>}
+                                        {showAvatar ? renderAvatar(m.username, m.color, m.avatar, m) : <div style={{ width: 36, flexShrink: 0 }}></div>}
                                         <div className={styles.messageContent}>
                                             {showAvatar && (
                                                 <div className={styles.messageHeader}>

@@ -51,6 +51,7 @@ async function initDB() {
     try { await db.run('ALTER TABLE messages ADD COLUMN reply_to INTEGER'); } catch (e) { }
     try { await db.run('ALTER TABLE messages ADD COLUMN is_edited BOOLEAN DEFAULT 0'); } catch (e) { }
     try { await db.run('ALTER TABLE messages ADD COLUMN is_deleted BOOLEAN DEFAULT 0'); } catch (e) { }
+    try { await db.run('ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT "1"'); } catch (e) { }
 
     // Ensure there's a default general channel
     const general = await db.get('SELECT * FROM channels WHERE name = ?', ['general']);
