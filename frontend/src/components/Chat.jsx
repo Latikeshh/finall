@@ -396,141 +396,156 @@ export default function Chat() {
             <div className={styles.mainArea}>
                 {activeChannel && (
                     <>
-                        <div className={styles.chatHeader}>
-                            <div className={styles.chatHeaderTitle}>
-                                {activeChannel.is_direct ? <FiMessageSquare style={{ color: 'var(--text-tertiary)' }} /> : <FiHash style={{ color: 'var(--text-tertiary)' }} />}
-                                {activeChannel.name}
-                            </div>
-                        </div>
+                        {(() => {
+                            const dmTargetId = activeChannel.is_direct === 1 ? parseInt(activeChannel.name.replace('dm_', '').split('_').find(id => id !== String(user?.id))) : null;
+                            const isCurrentDMBlocked = dmTargetId && blockedUsers.has(dmTargetId);
+                            return (
+                                <>
+                                    <div className={styles.chatHeader}>
+                                        <div className={styles.chatHeaderTitle}>
+                                            {activeChannel.is_direct ? <FiMessageSquare style={{ color: 'var(--text-tertiary)' }} /> : <FiHash style={{ color: 'var(--text-tertiary)' }} />}
+                                            {activeChannel.name}
+                                        </div>
+                                    </div>
 
-                        <div className={styles.chatMessages}>
-                            {messages.filter(m => !blockedUsers.has(m.user_id)).map((m, i, arr) => {
-                                const showAvatar = i === 0 || arr[i - 1].user_id !== m.user_id; // Still used mapping visual logic
-                                const isSelf = m.user_id === user?.id;
-                                const isDecrypted = decryptedIds.has(m.id) || m.content.startsWith('[attached_file:');
+                                    <div className={styles.chatMessages}>
+                                        {messages.filter(m => !blockedUsers.has(m.user_id)).map((m, i, arr) => {
+                                            const showAvatar = i === 0 || arr[i - 1].user_id !== m.user_id; // Still used mapping visual logic
+                                            const isSelf = m.user_id === user?.id;
+                                            const isDecrypted = decryptedIds.has(m.id) || m.content.startsWith('[attached_file:');
 
-                                return (
-                                    <div key={m.id} className={`${styles.messageInfo} ${isSelf ? styles.messageSelf : ''}`} style={{ marginTop: showAvatar ? '0.5rem' : '-1rem' }}>
-                                        {showAvatar ? renderAvatar(m.username, m.color, m.avatar, m) : <div style={{ width: 36, flexShrink: 0 }}></div>}
-                                        <div className={styles.messageContent}>
-                                            {showAvatar && (
-                                                <div className={styles.messageHeader}>
-                                                    <span className={styles.messageAuthor} onClick={(e) => handleAvatarClick(e, m)} style={{ color: m.color || 'var(--text-primary)', cursor: 'pointer' }}>{m.username}</span>
-                                                    <span className={styles.messageTime}>{format(new Date(m.created_at), 'HH:mm')}</span>
+                                            return (
+                                                <div key={m.id} className={`${styles.messageInfo} ${isSelf ? styles.messageSelf : ''}`} style={{ marginTop: showAvatar ? '0.5rem' : '-1rem' }}>
+                                                    {showAvatar ? renderAvatar(m.username, m.color, m.avatar, m) : <div style={{ width: 36, flexShrink: 0 }}></div>}
+                                                    <div className={styles.messageContent}>
+                                                        {showAvatar && (
+                                                            <div className={styles.messageHeader}>
+                                                                <span className={styles.messageAuthor} onClick={(e) => handleAvatarClick(e, m)} style={{ color: m.color || 'var(--text-primary)', cursor: 'pointer' }}>{m.username}</span>
+                                                                <span className={styles.messageTime}>{format(new Date(m.created_at), 'HH:mm')}</span>
+                                                            </div>
+                                                        )}
+
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: isSelf ? 'row-reverse' : 'row' }}>
+                                                            <div className={`${styles.messageText} react-markdown ${!isDecrypted ? styles.encryptedBlob : ''}`}>
+                                                                {m.reply_to && isDecrypted && (
+                                                                    <div className={styles.replyQuote}>
+                                                                        <div className={styles.replyUser}>{m.reply_username}</div>
+                                                                        <div className={styles.replyText}>{m.reply_content?.substring(0, 40)}{m.reply_content?.length > 40 ? '...' : ''}</div>
+                                                                    </div>
+                                                                )}
+                                                                {isDecrypted ? (
+                                                                    renderMessageContent(m.content)
+                                                                ) : (
+                                                                    <span style={{ fontFamily: 'monospace', opacity: 0.8 }}>{encryptVisualText(m.content)}</span>
+                                                                )}
+                                                                {m.is_edited === 1 && <div style={{ fontSize: '0.7rem', opacity: 0.6, marginTop: '2px', textAlign: isSelf ? 'right' : 'left' }}>(edited)</div>}
+                                                            </div>
+
+                                                            <div className={styles.msgActions}>
+                                                                {!m.content.startsWith('[attached_file:') && (
+                                                                    <button onClick={() => toggleDecryption(m.id)} className={styles.actionBtn} title={isDecrypted ? "Lock Message" : "Decrypt Message"}>
+                                                                        {isDecrypted ? <FiUnlock className={styles.unlockIcon} /> : <FiLock className={styles.lockIcon} />}
+                                                                    </button>
+                                                                )}
+                                                                {isDecrypted && (
+                                                                    <>
+                                                                        <button onClick={() => setReplyTo(m)} className={styles.actionBtn} title="Reply"><FiCornerUpLeft /></button>
+                                                                        {isSelf && m.is_deleted === 0 && (
+                                                                            <>
+                                                                                <button onClick={() => { setEditMsg(m); setInputStr(m.content); setReplyTo(null); }} className={styles.actionBtn} title="Edit"><FiEdit2 /></button>
+                                                                                <button onClick={() => socket.emit('delete_message', { messageId: m.id, channelId: activeChannel.id })} className={styles.actionBtn} title="Delete"><FiTrash2 /></button>
+                                                                            </>
+                                                                        )}
+                                                                        {isAdmin && !isSelf && m.is_deleted === 0 && (
+                                                                            <button onClick={() => socket.emit('delete_message', { messageId: m.id, channelId: activeChannel.id })} className={styles.actionBtn} title="Admin Delete"><FiTrash2 /></button>
+                                                                        )}
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            )}
+                                            );
+                                        })}
+                                        <div ref={messagesEndRef} />
+                                    </div>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: isSelf ? 'row-reverse' : 'row' }}>
-                                                <div className={`${styles.messageText} react-markdown ${!isDecrypted ? styles.encryptedBlob : ''}`}>
-                                                    {m.reply_to && isDecrypted && (
-                                                        <div className={styles.replyQuote}>
-                                                            <div className={styles.replyUser}>{m.reply_username}</div>
-                                                            <div className={styles.replyText}>{m.reply_content?.substring(0, 40)}{m.reply_content?.length > 40 ? '...' : ''}</div>
+                                    <div className={styles.chatInputArea}>
+                                        {(replyTo || editMsg) && (
+                                            <div className={styles.activeActionBanner}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                        {replyTo ? <FiCornerUpLeft /> : <FiEdit2 />}
+                                                        {replyTo ? `Replying to ${replyTo.username}` : `Editing Message`}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {replyTo ? replyTo.content : editMsg.content}
+                                                    </div>
+                                                </div>
+                                                <button type="button" onClick={() => { setReplyTo(null); setEditMsg(null); setInputStr(''); }} className={styles.closeActionBtn}>
+                                                    <FiX />
+                                                </button>
+                                            </div>
+                                        )}
+                                        {isCurrentDMBlocked ? (
+                                            <div style={{ padding: '1.25rem', textAlign: 'center', background: 'var(--bg-tertiary)', borderRadius: '12px', color: 'var(--text-tertiary)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem' }}>
+                                                <span style={{ fontSize: '1.5rem' }}>🚷</span>
+                                                <span>You have blocked this user. Unblock them from their profile card to resume sending messages.</span>
+                                            </div>
+                                        ) : (
+                                            <form className={`${styles.inputWrapper} ${(replyTo || editMsg) ? styles.inputWrapperActive : ''}`} onSubmit={handleSend}>
+                                                {typingUsers.size > 0 && (
+                                                    <div className={styles.typingIndicator}>
+                                                        {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing
+                                                        <span className="typing-dot"></span>
+                                                        <span className="typing-dot"></span>
+                                                        <span className="typing-dot"></span>
+                                                    </div>
+                                                )}
+                                                <div style={{ position: 'absolute', top: -35, right: 0, fontSize: '0.8rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <FiLock /> End-to-End Encrypted Link
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    className={styles.messageInput}
+                                                    placeholder={`Message ${activeChannel.is_direct ? 'User' : '#' + activeChannel.name}`}
+                                                    value={inputStr}
+                                                    onChange={handleTyping}
+                                                />
+                                                <input
+                                                    type="file"
+                                                    ref={fileInputRef}
+                                                    style={{ display: 'none' }}
+                                                    onChange={handleFileChange}
+                                                />
+                                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                    <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={styles.attachBtn} title="Add Emoji">
+                                                        <FiSmile />
+                                                    </button>
+                                                    {showEmojiPicker && (
+                                                        <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '10px', zIndex: 50 }}>
+                                                            <EmojiPicker
+                                                                onEmojiClick={(e) => {
+                                                                    setInputStr(prev => prev + e.emoji);
+                                                                    setShowEmojiPicker(false);
+                                                                }}
+                                                                theme="dark"
+                                                            />
                                                         </div>
                                                     )}
-                                                    {isDecrypted ? (
-                                                        renderMessageContent(m.content)
-                                                    ) : (
-                                                        <span style={{ fontFamily: 'monospace', opacity: 0.8 }}>{encryptVisualText(m.content)}</span>
-                                                    )}
-                                                    {m.is_edited === 1 && <div style={{ fontSize: '0.7rem', opacity: 0.6, marginTop: '2px', textAlign: isSelf ? 'right' : 'left' }}>(edited)</div>}
                                                 </div>
-
-                                                <div className={styles.msgActions}>
-                                                    {!m.content.startsWith('[attached_file:') && (
-                                                        <button onClick={() => toggleDecryption(m.id)} className={styles.actionBtn} title={isDecrypted ? "Lock Message" : "Decrypt Message"}>
-                                                            {isDecrypted ? <FiUnlock className={styles.unlockIcon} /> : <FiLock className={styles.lockIcon} />}
-                                                        </button>
-                                                    )}
-                                                    {isDecrypted && (
-                                                        <>
-                                                            <button onClick={() => setReplyTo(m)} className={styles.actionBtn} title="Reply"><FiCornerUpLeft /></button>
-                                                            {isSelf && m.is_deleted === 0 && (
-                                                                <>
-                                                                    <button onClick={() => { setEditMsg(m); setInputStr(m.content); setReplyTo(null); }} className={styles.actionBtn} title="Edit"><FiEdit2 /></button>
-                                                                    <button onClick={() => socket.emit('delete_message', { messageId: m.id, channelId: activeChannel.id })} className={styles.actionBtn} title="Delete"><FiTrash2 /></button>
-                                                                </>
-                                                            )}
-                                                            {isAdmin && !isSelf && m.is_deleted === 0 && (
-                                                                <button onClick={() => socket.emit('delete_message', { messageId: m.id, channelId: activeChannel.id })} className={styles.actionBtn} title="Admin Delete"><FiTrash2 /></button>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                                                <button type="button" onClick={() => fileInputRef.current?.click()} className={styles.attachBtn} title="Attach File">
+                                                    <FiPaperclip />
+                                                </button>
+                                                <button type="submit" className={styles.sendBtn} disabled={!inputStr.trim()}>
+                                                    <FiSend />
+                                                </button>
+                                            </form>
+                                        )}
                                     </div>
-                                );
-                            })}
-                            <div ref={messagesEndRef} />
-                        </div>
-
-                        <div className={styles.chatInputArea}>
-                            {(replyTo || editMsg) && (
-                                <div className={styles.activeActionBanner}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                            {replyTo ? <FiCornerUpLeft /> : <FiEdit2 />}
-                                            {replyTo ? `Replying to ${replyTo.username}` : `Editing Message`}
-                                        </div>
-                                        <div style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {replyTo ? replyTo.content : editMsg.content}
-                                        </div>
-                                    </div>
-                                    <button type="button" onClick={() => { setReplyTo(null); setEditMsg(null); setInputStr(''); }} className={styles.closeActionBtn}>
-                                        <FiX />
-                                    </button>
-                                </div>
-                            )}
-                            <form className={`${styles.inputWrapper} ${(replyTo || editMsg) ? styles.inputWrapperActive : ''}`} onSubmit={handleSend}>
-                                {typingUsers.size > 0 && (
-                                    <div className={styles.typingIndicator}>
-                                        {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing
-                                        <span className="typing-dot"></span>
-                                        <span className="typing-dot"></span>
-                                        <span className="typing-dot"></span>
-                                    </div>
-                                )}
-                                <div style={{ position: 'absolute', top: -35, right: 0, fontSize: '0.8rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <FiLock /> End-to-End Encrypted Link
-                                </div>
-                                <input
-                                    type="text"
-                                    className={styles.messageInput}
-                                    placeholder={`Message ${activeChannel.is_direct ? 'User' : '#' + activeChannel.name}`}
-                                    value={inputStr}
-                                    onChange={handleTyping}
-                                />
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    style={{ display: 'none' }}
-                                    onChange={handleFileChange}
-                                />
-                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                    <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={styles.attachBtn} title="Add Emoji">
-                                        <FiSmile />
-                                    </button>
-                                    {showEmojiPicker && (
-                                        <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '10px', zIndex: 50 }}>
-                                            <EmojiPicker
-                                                onEmojiClick={(e) => {
-                                                    setInputStr(prev => prev + e.emoji);
-                                                    setShowEmojiPicker(false);
-                                                }}
-                                                theme="dark"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className={styles.attachBtn} title="Attach File">
-                                    <FiPaperclip />
-                                </button>
-                                <button type="submit" className={styles.sendBtn} disabled={!inputStr.trim()}>
-                                    <FiSend />
-                                </button>
-                            </form>
-                        </div>
+                                </>
+                            );
+                        })()}
                     </>
                 )}
             </div>
@@ -563,9 +578,11 @@ export default function Chat() {
                         </div>
                         {profileCard.user.id !== user?.id && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                                <button onClick={() => { handleStartDM(profileCard.user.id); setProfileCard(null); }} className={styles.profileDmBtn}>
-                                    <FiMessageSquare /> Send Message
-                                </button>
+                                {!blockedUsers.has(profileCard.user.id) && (
+                                    <button onClick={() => { handleStartDM(profileCard.user.id); setProfileCard(null); }} className={styles.profileDmBtn}>
+                                        <FiMessageSquare /> Send Message
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => {
                                         if (blockedUsers.has(profileCard.user.id)) {
